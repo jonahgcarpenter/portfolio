@@ -190,7 +190,7 @@ func loadAllSections() {
 	timer := prometheus.NewTimer(markdownRenderDuration) // Start performance timer
 	defer timer.ObserveDuration()                        // Record execution time upon exit
 
-	files, _ := os.ReadDir(dataDir)
+	files, err := os.ReadDir(dataDir)
 	if err != nil {
 		log.Printf("Could not read directory %s: %v", dataDir, err)
 		return
