@@ -49,7 +49,7 @@ var (
 	// cacheMutex is a Read/Write lock that prevents race conditions when background workers
 	// update the cache while web requests are simultaneously reading from it.
 	cacheMutex   sync.RWMutex 
-	dataDir      = "./data/"
+	dataDir      = "/app/data/"
 	
 	// --- Server-Sent Events (SSE) Variables ---
 	// clients keeps track of all currently connected web browsers.
