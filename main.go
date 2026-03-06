@@ -191,7 +191,14 @@ func loadAllSections() {
 	defer timer.ObserveDuration()                        // Record execution time upon exit
 
 	files, _ := os.ReadDir(dataDir)
+	if err != nil {
+		log.Printf("Could not read directory %s: %v", dataDir, err)
+		return
+	}
+
 	for _, file := range files {
+		log.Printf("Found entry: %s (IsDirectory: %v)", file.Name(), file.IsDir())
+
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") { continue }
 
 		data, _ := os.ReadFile(dataDir + file.Name())
