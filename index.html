@@ -22,11 +22,33 @@
         padding-bottom: 10px;
       }
 
+      /* Blinking cursor animation */
+      .cursor {
+        animation: blink 1s step-end infinite;
+        color: #c9d1d9; /* Optional: makes the cursor match the main text color instead of the blue header */
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+
       /* Navigation layout */
       nav {
         margin-bottom: 30px;
         display: flex;
         gap: 10px;
+      }
+
+      nav button.active {
+        background: #30363d;
+        border-color: #7ee787;
+        color: #7ee787;
       }
 
       /* Button styling to look like clickable terminal commands */
@@ -71,20 +93,25 @@
         margin-bottom: 8px;
       }
 
-      /* Blinking cursor animation */
-      .cursor {
-        animation: blink 1s step-end infinite;
-        color: #c9d1d9; /* Optional: makes the cursor match the main text color instead of the blue header */
+      /* Pagination layout */
+      #content {
+        display: flex;
+        flex-direction: column;
+        /* Ensure the box stretches if content is short */
+        min-height: 400px;
       }
 
-      @keyframes blink {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0;
-        }
+      #dynamic-content {
+        flex-grow: 1; /* Pushes the pagination container to the bottom */
+        margin-bottom: 20px;
+      }
+
+      #pagination {
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px dashed #30363d;
+        padding-top: 15px;
+        margin-top: auto; /* Anchors it to the bottom */
       }
 
       /* Footer styling */
@@ -134,6 +161,10 @@
           padding: 15px; /* Reduce inner padding */
           overflow-x: auto; /* Ensure tables, preformatted logs, or metrics can be scrolled horizontally */
         }
+
+        #pagination {
+          gap: 12px;
+        }
       }
     </style>
   </head>
@@ -141,24 +172,30 @@
     <h1>jonahgcarpenter@portfolio:~# <span class="cursor">█</span></h1>
 
     <nav>
-      <button onclick="loadSection('about-me')">./about-me.sh</button>
-      <button onclick="loadSection('resume')">./resume.sh</button>
-      <button onclick="loadSection('calc-translation')">
+      <button onclick="loadRoute('about-me')">./about-me.sh</button>
+      <button onclick="loadRoute('resume')">./resume.sh</button>
+      <button onclick="loadRoute('calc-translation')">
         ./calc-translation.sh
       </button>
-      <button onclick="loadSection('homelab')">./homelab.sh</button>
-      <button onclick="loadSection('oswald-ai')">./oswald-ai.sh</button>
+      <button onclick="loadRoute('homelab')">./homelab.sh</button>
+      <button onclick="loadRoute('oswald-ai')">./oswald-ai.sh</button>
       <button onclick="loadMetrics()">./metrics.sh</button>
-      <button onclick="loadSection('logs')">./logs.sh</button>
+      <button onclick="loadRoute('logs')">./logs.sh</button>
     </nav>
 
     <div id="content">
-      <p>Awaiting input... click a command above to execute.</p>
+      <div id="dynamic-content">
+        <p>Awaiting input... click a command above to execute.</p>
+      </div>
+
+      <div id="pagination" style="display: none">
+        <button id="btn-back" onclick="navigate(-1)">&#9664; ../</button>
+        <button id="btn-next" onclick="navigate(1)">./next &#9654;</button>
+      </div>
     </div>
 
     <footer>
       <p>
-        <span style="color: #7ee787">user@host:~#</span>
         <a href="mailto:jonahgcarpenter@gmail.com">email</a> |
         <a
           href="https://github.com/jonahgcarpenter"
@@ -170,31 +207,48 @@
     </footer>
 
     <script>
+      // Define the exact order for pages
+      const pageOrder = [
+        "about-me",
+        "resume",
+        "calc-translation",
+        "homelab",
+        "oswald-ai",
+        "metrics",
+        "logs",
+      ];
+
       // State management: Tracks which section the user is currently viewing.
       // This is critical for the Server-Sent Events (SSE) live-reload logic.
       let currentSection = "";
+
+      // Central routing function to handle both markdown and metrics
+      function loadRoute(sectionName) {
+        if (sectionName === "metrics") {
+          loadMetrics();
+        } else {
+          loadSection(sectionName);
+        }
+        updatePaginationButtons(sectionName);
+        updateActiveNav(sectionName);
+      }
 
       /**
        * loadSection dynamically fetches pre-rendered HTML from the Go backend.
        * @param {string} sectionName - The name of the markdown file/ConfigMap key (e.g., 'projects')
        */
       async function loadSection(sectionName) {
-        currentSection = sectionName; // Update local state
-        const contentDiv = document.getElementById("content");
+        currentSection = sectionName;
+        const contentDiv = document.getElementById("dynamic-content");
 
         try {
-          // Fetch the rendered HTML from the backend cache
           const response = await fetch(`/api/section/${sectionName}`);
-
           if (response.ok) {
-            // Inject the HTML directly into the DOM
             contentDiv.innerHTML = await response.text();
           } else {
-            // Graceful error handling for missing files/routes
             contentDiv.innerHTML = `<p style="color: #ff7b72;">Error: Section not found.</p>`;
           }
         } catch (error) {
-          // Fallback if the Go server is completely down or unreachable
           contentDiv.innerHTML = `<p style="color: #ff7b72;">Connection refused.</p>`;
         }
       }
@@ -209,7 +263,6 @@
 
       evtSource.onmessage = function (event) {
         const changedSection = event.data;
-        console.log("Server says this file changed:", changedSection);
 
         // The Smart Reload:
         // We ONLY hit the backend for new data if the user is currently looking
@@ -231,15 +284,14 @@
        * we must wrap it in a <pre> tag to preserve the line breaks and spacing.
        */
       async function loadMetrics() {
-        currentSection = "metrics"; // Update state so SSE ignores this view
-        const contentDiv = document.getElementById("content");
+        currentSection = "metrics";
+        const contentDiv = document.getElementById("dynamic-content");
         contentDiv.innerHTML = "<p><i>Scraping /metrics endpoint...</i></p>";
 
         try {
           const response = await fetch("/metrics");
           if (response.ok) {
             const text = await response.text();
-            // Wrap the raw Prometheus text in <pre> tags with horizontal scrolling
             contentDiv.innerHTML = `<pre style="color: #a5d6ff; overflow-x: auto; font-size: 0.9em;">${text}</pre>`;
           } else {
             contentDiv.innerHTML = `<p style="color: #ff7b72;">Error fetching metrics.</p>`;
@@ -247,6 +299,51 @@
         } catch (error) {
           contentDiv.innerHTML = `<p style="color: #ff7b72;">Connection refused.</p>`;
         }
+      }
+
+      function updateActiveNav(activeSection) {
+        // Find all buttons inside the top navigation bar
+        const navButtons = document.querySelectorAll("nav button");
+
+        // Clear the 'active' class from all buttons first
+        navButtons.forEach((btn) => btn.classList.remove("active"));
+
+        // Loop through and add 'active' to the button whose text contains the section name
+        navButtons.forEach((btn) => {
+          if (btn.textContent.includes(activeSection)) {
+            btn.classList.add("active");
+          }
+        });
+      }
+
+      // --- PAGINATION LOGIC ---
+      function navigate(direction) {
+        let currentIndex = pageOrder.indexOf(currentSection);
+        let newIndex = currentIndex + direction;
+
+        if (newIndex >= 0 && newIndex < pageOrder.length) {
+          loadRoute(pageOrder[newIndex]);
+        }
+      }
+
+      function updatePaginationButtons(activeSection) {
+        // Show the pagination container once a route is loaded
+        document.getElementById("pagination").style.display = "flex";
+
+        const currentIndex = pageOrder.indexOf(activeSection);
+        const btnBack = document.getElementById("btn-back");
+        const btnNext = document.getElementById("btn-next");
+
+        // Disable 'Back' on the first page, disable 'Next' on the last
+        btnBack.disabled = currentIndex === 0;
+        btnNext.disabled = currentIndex === pageOrder.length - 1;
+
+        // Visual styling for disabled buttons to look inactive
+        btnBack.style.opacity = btnBack.disabled ? "0.3" : "1";
+        btnBack.style.cursor = btnBack.disabled ? "not-allowed" : "pointer";
+
+        btnNext.style.opacity = btnNext.disabled ? "0.3" : "1";
+        btnNext.style.cursor = btnNext.disabled ? "not-allowed" : "pointer";
       }
     </script>
   </body>
