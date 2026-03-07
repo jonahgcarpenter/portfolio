@@ -48,16 +48,18 @@ var (
 	contentCache = make(map[string][]byte)
 	// cacheMutex is a Read/Write lock that prevents race conditions when background workers
 	// update the cache while web requests are simultaneously reading from it.
-	cacheMutex   sync.RWMutex 
-	dataDir      = "/app/data/"
-	
+	cacheMutex sync.RWMutex
+	dataDir    = "./data/"
+	//TODO: Uncomment b4 release
+	// dataDir    = "/app/data/"
+
 	// --- Server-Sent Events (SSE) Variables ---
 	// clients keeps track of all currently connected web browsers.
-	clients   = make(map[chan string]bool)
+	clients = make(map[chan string]bool)
 	// broadcast is a channel used to push update notifications to all connected browsers.
 	broadcast = make(chan string)
 	// sseMutex protects the clients map from concurrent read/writes when users connect/disconnect.
-	sseMutex  = sync.Mutex{} 
+	sseMutex = sync.Mutex{}
 
 	// --- Prometheus Metrics Instrumentation ---
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -67,7 +69,7 @@ var (
 		},
 		[]string{"section"},
 	)
-	
+
 	activeConnections = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "portfolio_active_sse_connections",
@@ -130,7 +132,7 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 
 	clientChan := make(chan string)
-	
+
 	// Register the new client safely
 	sseMutex.Lock()
 	clients[clientChan] = true
@@ -141,7 +143,7 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		sseMutex.Lock()
 		delete(clients, clientChan)
-		activeConnections.Dec() 
+		activeConnections.Dec()
 		sseMutex.Unlock()
 		close(clientChan)
 	}()
@@ -157,7 +159,9 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 // When deployed to K8s, this detects when FluxCD updates the ConfigMap volume mount.
 func watchDirectory() {
 	watcher, err := fsnotify.NewWatcher()
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer watcher.Close()
 
 	watcher.Add(dataDir)
@@ -165,10 +169,12 @@ func watchDirectory() {
 	for {
 		select {
 		case event, ok := <-watcher.Events:
-			if !ok { return }
+			if !ok {
+				return
+			}
 			// Only react to Markdown file creations or modifications
 			if strings.HasSuffix(event.Name, ".md") && (event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) {
-				
+
 				// Clean up the file path to extract just the section name (e.g., "experience")
 				parts := strings.Split(strings.TrimSuffix(event.Name, ".md"), "/")
 				cleanKey := parts[len(parts)-1]
@@ -176,10 +182,12 @@ func watchDirectory() {
 
 				// Re-render the files and broadcast the update to connected browsers
 				loadAllSections()
-				broadcast <- cleanKey 
+				broadcast <- cleanKey
 			}
 		case err, ok := <-watcher.Errors:
-			if !ok { return }
+			if !ok {
+				return
+			}
 			log.Println("Watcher error:", err)
 		}
 	}
@@ -199,14 +207,16 @@ func loadAllSections() {
 	for _, file := range files {
 		log.Printf("Found entry: %s (IsDirectory: %v)", file.Name(), file.IsDir())
 
-		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") { continue }
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".md") {
+			continue
+		}
 
 		data, _ := os.ReadFile(dataDir + file.Name())
 		var buf bytes.Buffer
 		goldmark.Convert(data, &buf)
 
 		sectionKey := strings.TrimSuffix(file.Name(), ".md")
-		
+
 		// Safely write the rendered HTML into the global content cache
 		cacheMutex.Lock()
 		contentCache[sectionKey] = buf.Bytes()
@@ -217,7 +227,7 @@ func loadAllSections() {
 // handleSection serves the pre-rendered HTML for a specific section from memory.
 func handleSection(w http.ResponseWriter, r *http.Request) {
 	section := strings.TrimPrefix(r.URL.Path, "/api/section/")
-	
+
 	// Increment the Prometheus request counter with the requested section name
 	httpRequestsTotal.WithLabelValues(section).Inc()
 
@@ -262,7 +272,7 @@ func updateLokiCache() bool {
 	}
 
 	query := `{namespace="flux-system"}`
-	reqURL := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&limit=10", lokiURL, url.QueryEscape(query))
+	reqURL := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&limit=50", lokiURL, url.QueryEscape(query))
 
 	// Enforce a strict timeout so a stalled Loki instance doesn't hang the worker
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -291,8 +301,12 @@ func updateLokiCache() bool {
 	for _, result := range lokiResp.Data.Result {
 		// Extract pod/app labels, defaulting to "flux-system" if missing
 		source := result.Stream["app"]
-		if source == "" { source = result.Stream["pod"] }
-		if source == "" { source = "flux-system" }
+		if source == "" {
+			source = result.Stream["pod"]
+		}
+		if source == "" {
+			source = "flux-system"
+		}
 
 		// Strip Kubernetes pod hashes for cleaner UI (e.g., helm-controller-abc-123 -> helm-controller)
 		if strings.Contains(source, "-") {
@@ -307,20 +321,20 @@ func updateLokiCache() bool {
 				// Parse Loki's raw nanosecond timestamp for sorting
 				tsNano, _ := strconv.ParseInt(val[0], 10, 64)
 				rawLog := val[1]
-				
+
 				var logMap map[string]interface{}
 				err := json.Unmarshal([]byte(rawLog), &logMap)
-				
+
 				var formatted string
 				// If the log is valid JSON and contains a message, format it cleanly
 				if err == nil && logMap["msg"] != nil {
 					msg := logMap["msg"].(string)
-					
+
 					timeStr := ""
 					if ts, ok := logMap["ts"].(string); ok {
 						timeStr = fmt.Sprintf("<span style=\"color: #8b949e;\">%s</span> ", ts)
 					}
-					
+
 					// Append context like the GitRepository or HelmChart being reconciled
 					contextStr := ""
 					if kind, kOk := logMap["controllerKind"].(string); kOk {
@@ -331,9 +345,13 @@ func updateLokiCache() bool {
 
 					// Color-code log levels (red for errors, default gray for info)
 					level := "info"
-					if l, ok := logMap["level"].(string); ok { level = l }
-					msgColor := "#c9d1d9" 
-					if level == "error" { msgColor = "#ff7b72" }
+					if l, ok := logMap["level"].(string); ok {
+						level = l
+					}
+					msgColor := "#c9d1d9"
+					if level == "error" {
+						msgColor = "#ff7b72"
+					}
 
 					formatted = fmt.Sprintf("%s<span style=\"color: #7ee787;\">[%s]</span> <span style=\"color: %s;\">%s%s</span>\n", timeStr, source, msgColor, msg, contextStr)
 				} else {
