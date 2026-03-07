@@ -26,6 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/renderer/html"
 )
 
 //go:embed index.html
@@ -213,7 +214,13 @@ func loadAllSections() {
 
 		data, _ := os.ReadFile(dataDir + file.Name())
 		var buf bytes.Buffer
-		goldmark.Convert(data, &buf)
+
+		md := goldmark.New(
+			goldmark.WithRendererOptions(
+				html.WithHardWraps(),
+			),
+		)
+		md.Convert(data, &buf)
 
 		sectionKey := strings.TrimSuffix(file.Name(), ".md")
 
