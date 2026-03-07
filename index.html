@@ -179,11 +179,10 @@
       </button>
       <button onclick="loadRoute('homelab')">./homelab.sh</button>
       <button onclick="loadRoute('oswald-ai')">./oswald-ai.sh</button>
-      <!-- BUG: New page breaks active nav styles -->
       <button onclick="loadRoute('aprils-lil-pugs')">
         ./aprils-lil-pugs.sh
       </button>
-      <button onclick="loadMetrics()">./metrics.sh</button>
+      <button onclick="loadRoute('metrics')">./metrics.sh</button>
       <button onclick="loadRoute('logs')">./logs.sh</button>
     </nav>
 
@@ -307,15 +306,13 @@
       }
 
       function updateActiveNav(activeSection) {
-        // Find all buttons inside the top navigation bar
         const navButtons = document.querySelectorAll("nav button");
 
-        // Clear the 'active' class from all buttons first
         navButtons.forEach((btn) => btn.classList.remove("active"));
 
-        // Loop through and add 'active' to the button whose text contains the section name
         navButtons.forEach((btn) => {
-          if (btn.textContent.includes(activeSection)) {
+          // Use exact matching to prevent overlapping route names from breaking styles
+          if (btn.textContent.trim() === `./${activeSection}.sh`) {
             btn.classList.add("active");
           }
         });
