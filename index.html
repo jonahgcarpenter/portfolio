@@ -291,7 +291,7 @@
       // --- ROUTING LOGIC ---
 
       // Central router function triggered by nav buttons
-      function loadRoute(sectionName) {
+      async function loadRoute(sectionName) {
         // Clear background metric polling if navigating away from the metrics page
         if (metricsInterval) {
           clearInterval(metricsInterval);
@@ -300,14 +300,20 @@
 
         // Branch logic: Load metrics dashboard OR standard markdown section
         if (sectionName === "metrics") {
-          loadMetrics();
+          await loadMetrics();
         } else {
-          loadSection(sectionName);
+          await loadSection(sectionName);
         }
 
         // Update UI state
         updatePaginationButtons(sectionName);
         updateActiveNav(sectionName);
+
+        // Smoothly scroll back to the top of the window AFTER content is rendered
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
       }
 
       /**
@@ -596,12 +602,6 @@
         // Ensure the index stays within the bounds of the pageOrder array
         if (newIndex >= 0 && newIndex < pageOrder.length) {
           loadRoute(pageOrder[newIndex]);
-
-          // Smoothly scroll back to the top of the window
-          window.scrollTo({
-            top: 0,
-            behavior: "smooth",
-          });
         }
       }
 
