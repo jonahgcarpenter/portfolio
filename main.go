@@ -114,11 +114,19 @@ func main() {
 // handleMessages acts as a broker. It listens for section names on the broadcast channel
 // and forwards them to every connected client's individual SSE channel.
 func handleMessages() {
-	for {
-		msg := <-broadcast
+	for msg := range broadcast {
 		sseMutex.Lock()
 		for clientChan := range clients {
-			clientChan <- msg
+			// Non-blocking send: prevents a single slow or dead client
+			// from blocking the global mutex and freezing all other users.
+			select {
+			case clientChan <- msg:
+				// Message dispatched successfully
+			default:
+				// Client channel is full or unreadable.
+				// We drop the message for this specific client to keep the broker moving.
+				log.Printf("Warning: Dropped SSE message for a slow client")
+			}
 		}
 		sseMutex.Unlock()
 	}
@@ -132,7 +140,9 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	clientChan := make(chan string)
+	// Add a buffer of 10. This allows the broker to drop 10 messages into
+	// the queue instantly and move on, without waiting for the browser to acknowledge.
+	clientChan := make(chan string, 10)
 
 	// Register the new client safely
 	sseMutex.Lock()
@@ -146,13 +156,21 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 		delete(clients, clientChan)
 		activeConnections.Dec()
 		sseMutex.Unlock()
-		close(clientChan)
 	}()
 
+	// Get the request context to detect client disconnects
+	ctx := r.Context()
+
 	// Keep the connection open indefinitely, flushing data to the browser as it arrives
-	for msg := range clientChan {
-		fmt.Fprintf(w, "data: %s\n\n", msg)
-		w.(http.Flusher).Flush()
+	for {
+		select {
+		case <-ctx.Done():
+			// The client disconnected (e.g., closed the tab or refreshed the page)
+			return
+		case msg := <-clientChan:
+			fmt.Fprintf(w, "data: %s\n\n", msg)
+			w.(http.Flusher).Flush()
+		}
 	}
 }
 

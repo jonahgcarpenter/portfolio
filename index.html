@@ -5,14 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jonah Carpenter Portfolio</title>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
       /* Base terminal styling */
       body {
         font-family: "Courier New", Courier, monospace;
-        background-color: #0d1117; /* GitHub Dark canvas */
-        color: #c9d1d9; /* GitHub Dark text */
+        background-color: #0d1117;
+        color: #c9d1d9;
         padding: 20px;
         line-height: 1.6;
+
+        /* Flexbox additions */
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        margin: 0; /* Ensures no default browser margins interfere */
+        box-sizing: border-box;
       }
 
       /* Header styling */
@@ -73,7 +82,11 @@
         padding: 20px;
         border-radius: 6px;
         border: 1px solid #30363d;
-        min-height: 200px;
+
+        /* Flexbox additions */
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
       }
 
       /* Dynamic Markdown Styling 
@@ -117,11 +130,12 @@
       /* Footer styling */
       footer {
         margin-top: 40px;
-        padding-top: 20px;
+        padding: 20px 0;
         border-top: 1px dashed #30363d;
         text-align: center;
         font-size: 0.9rem;
-        color: #8b949e; /* Subdued gray */
+        color: #8b949e;
+        width: 100%;
       }
 
       footer a {
@@ -225,9 +239,16 @@
       // State management: Tracks which section the user is currently viewing.
       // This is critical for the Server-Sent Events (SSE) live-reload logic.
       let currentSection = "";
+      let metricsInterval = null;
 
       // Central routing function to handle both markdown and metrics
       function loadRoute(sectionName) {
+        // Stop polling metrics if we navigate anywhere
+        if (metricsInterval) {
+          clearInterval(metricsInterval);
+          metricsInterval = null;
+        }
+
         if (sectionName === "metrics") {
           loadMetrics();
         } else {
@@ -287,22 +308,200 @@
        * Because Prometheus returns raw, plain-text exposition format rather than HTML,
        * we must wrap it in a <pre> tag to preserve the line breaks and spacing.
        */
+      let rawMetricsText = "";
+      let showingRawMetrics = false;
+      let chartInstance = null; // Store chart instance to destroy/recreate it
+
       async function loadMetrics() {
         currentSection = "metrics";
         const contentDiv = document.getElementById("dynamic-content");
         contentDiv.innerHTML = "<p><i>Scraping /metrics endpoint...</i></p>";
 
+        // 1. Do the initial fetch and render the layout
+        await fetchAndUpdateMetrics(true);
+
+        // 2. Start the background loop to fetch fresh data every 5 seconds (5000ms)
+        if (!metricsInterval) {
+          metricsInterval = setInterval(() => {
+            fetchAndUpdateMetrics(false);
+          }, 5000);
+        }
+      }
+
+      // fetchAndUpdateMetrics does the heavy lifting.
+      // If 'isInitialLoad' is true, it builds the DOM. If false, it just updates the data in place.
+      async function fetchAndUpdateMetrics(isInitialLoad) {
         try {
           const response = await fetch("/metrics");
           if (response.ok) {
-            const text = await response.text();
-            contentDiv.innerHTML = `<pre style="color: #a5d6ff; overflow-x: auto; font-size: 0.9em;">${text}</pre>`;
-          } else {
-            contentDiv.innerHTML = `<p style="color: #ff7b72;">Error fetching metrics.</p>`;
+            rawMetricsText = await response.text();
+
+            if (isInitialLoad) {
+              showingRawMetrics = false;
+              renderMetricsView();
+            } else {
+              // We are just updating existing data silently
+              if (showingRawMetrics) {
+                // If looking at raw text, just update the text block
+                const preBlock = document.getElementById("raw-metrics-text");
+                if (preBlock) preBlock.textContent = rawMetricsText;
+              } else {
+                // If looking at the visual charts, update the DOM elements and Chart.js data
+                const parsed = parsePrometheusMetrics(rawMetricsText);
+                const memoryMB = (parsed.memoryAlloc / 1024 / 1024).toFixed(2);
+
+                const connElem = document.getElementById("metric-connections");
+                const routElem = document.getElementById("metric-goroutines");
+                const memElem = document.getElementById("metric-memory");
+
+                if (connElem) connElem.textContent = parsed.activeConnections;
+                if (routElem) routElem.textContent = parsed.goroutines;
+                if (memElem) memElem.textContent = `${memoryMB} MB`;
+
+                // Update the Chart.js instance in place so it animates smoothly
+                if (chartInstance) {
+                  chartInstance.data.labels = Object.keys(parsed.requests);
+                  chartInstance.data.datasets[0].data = Object.values(
+                    parsed.requests,
+                  );
+                  chartInstance.update();
+                }
+              }
+            }
           }
         } catch (error) {
-          contentDiv.innerHTML = `<p style="color: #ff7b72;">Connection refused.</p>`;
+          console.error("Failed to silently update metrics:", error);
         }
+      }
+
+      function toggleMetricsView() {
+        showingRawMetrics = !showingRawMetrics;
+        renderMetricsView();
+      }
+
+      function parsePrometheusMetrics(text) {
+        const metrics = {
+          requests: {},
+          activeConnections: 0,
+          goroutines: 0,
+          memoryAlloc: 0,
+        };
+        const lines = text.split("\n");
+
+        for (let line of lines) {
+          if (line.startsWith("#") || line.trim() === "") continue;
+
+          if (line.startsWith("portfolio_http_requests_total")) {
+            const match = line.match(/section="([^"]+)"}\s+([0-9.]+)/);
+            if (match) metrics.requests[match[1]] = parseFloat(match[2]);
+          } else if (line.startsWith("portfolio_active_sse_connections")) {
+            metrics.activeConnections = parseFloat(line.split(" ")[1]);
+          } else if (line.startsWith("go_goroutines ")) {
+            metrics.goroutines = parseFloat(line.split(" ")[1]);
+          } else if (line.startsWith("go_memstats_alloc_bytes ")) {
+            metrics.memoryAlloc = parseFloat(line.split(" ")[1]);
+          }
+        }
+        return metrics;
+      }
+
+      function renderMetricsView() {
+        const contentDiv = document.getElementById("dynamic-content");
+
+        const disclaimerHtml = `
+          <span style="font-size: 0.85rem; color: #8b949e; font-style: italic; text-align: right;">
+            **DISCLAIMER** Metrics are ephemeral. Persistent historical data is routed to my Prometheus instance.
+          </span>
+        `;
+
+        if (showingRawMetrics) {
+          if (chartInstance) chartInstance.destroy();
+
+          contentDiv.innerHTML = `
+            <div style="margin-bottom: 20px;">
+              <button onclick="toggleMetricsView()">Show Visual Charts</button>
+              ${disclaimerHtml}
+            </div>
+            <pre id="raw-metrics-text" style="color: #a5d6ff; overflow-x: auto; font-size: 0.9em; flex-grow: 1;">${rawMetricsText}</pre>
+          `;
+        } else {
+          const parsed = parsePrometheusMetrics(rawMetricsText);
+          const memoryMB = (parsed.memoryAlloc / 1024 / 1024).toFixed(2);
+
+          // Using a flex-column wrapper to fill the vertical space
+          contentDiv.style.display = "flex";
+          contentDiv.style.flexDirection = "column";
+          contentDiv.style.height = "100%";
+
+          contentDiv.innerHTML = `
+            <div style="margin-bottom: 20px;">
+              <button onclick="toggleMetricsView()">Show Raw Prometheus Data</button>
+              ${disclaimerHtml}
+            </div>
+            
+            <div class="metrics-grid" style="display: flex; flex-wrap: wrap; gap: 20px; flex-grow: 1;">
+              <div style="flex: 2 1 400px; background: #21262d; padding: 15px; border-radius: 6px; border: 1px solid #30363d; display: flex; flex-direction: column;">
+                <h3 style="margin-top:0; color: #7ee787; font-size: 1.1rem; border-bottom: 1px solid #30363d; padding-bottom: 8px;">Page Views by Section</h3>
+                <div style="position: relative; flex-grow: 1; min-height: 300px; width: 100%;">
+                  <canvas id="requestsChart"></canvas>
+                </div>
+              </div>
+              
+              <div style="flex: 1 1 250px; background: #21262d; padding: 15px; border-radius: 6px; border: 1px solid #30363d;">
+                <h3 style="margin-top:0; color: #7ee787; font-size: 1.1rem; border-bottom: 1px solid #30363d; padding-bottom: 8px;">System Status</h3>
+                <ul style="list-style: none; padding: 0; margin: 0; font-size: 1.1rem; line-height: 2;">
+                  <li>Active SSE Connections: <strong id="metric-connections" style="color: #58a6ff;">${parsed.activeConnections}</strong></li>
+                  <li>Active Goroutines: <strong id="metric-goroutines" style="color: #58a6ff;">${parsed.goroutines}</strong></li>
+                  <li>Memory Allocated: <strong id="metric-memory" style="color: #58a6ff;">${memoryMB} MB</strong></li>
+                </ul>
+              </div>
+            </div>
+          `;
+
+          renderChart(parsed.requests);
+        }
+      }
+
+      function renderChart(requestsData) {
+        const ctx = document.getElementById("requestsChart");
+        if (!ctx) return;
+
+        const labels = Object.keys(requestsData);
+        const data = Object.values(requestsData);
+
+        chartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Total Requests",
+                data: data,
+                backgroundColor: "#58a6ff",
+                borderColor: "#1f6feb",
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false, // This allows the chart to stretch vertically
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { color: "#8b949e", stepSize: 1 },
+                grid: { color: "#30363d" },
+              },
+              x: {
+                ticks: { color: "#8b949e" },
+                grid: { display: false },
+              },
+            },
+            plugins: {
+              legend: { display: false },
+            },
+          },
+        });
       }
 
       function updateActiveNav(activeSection) {
