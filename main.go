@@ -174,6 +174,7 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 
 // watchDirectory monitors the data directory for file changes.
 // When deployed to K8s, this detects when FluxCD updates the ConfigMap volume mount.
+// BUG: This does not work with k8s configmap
 func watchDirectory() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
