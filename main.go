@@ -173,8 +173,7 @@ func sseHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // watchDirectory monitors the data directory for file changes.
-// When deployed to K8s, this detects when FluxCD updates the ConfigMap volume mount.
-// BUG: This does not work with k8s configmap
+// Supports both local file edits and Kubernetes ConfigMap atomic symlink updates
 func watchDirectory() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -190,18 +189,37 @@ func watchDirectory() {
 			if !ok {
 				return
 			}
-			// Only react to Markdown file creations or modifications
-			if strings.HasSuffix(event.Name, ".md") && (event.Has(fsnotify.Write) || event.Has(fsnotify.Create)) {
+			
+			// Local Development: React to direct Markdown file creations or modifications
+			isLocalEdit := strings.HasSuffix(event.Name, ".md") && (event.Has(fsnotify.Write) || event.Has(fsnotify.Create))
+			
+			// Kubernetes: React to ConfigMap updates (atomic symlink swaps using "..data")
+			isK8sEdit := strings.Contains(event.Name, "..data") && (event.Has(fsnotify.Create) || event.Has(fsnotify.Remove))
 
-				// Clean up the file path to extract just the section name (e.g., "experience")
+			if isLocalEdit {
+				// Clean up the file path to extract just the section name
 				parts := strings.Split(strings.TrimSuffix(event.Name, ".md"), "/")
 				cleanKey := parts[len(parts)-1]
-				cleanKey = strings.TrimPrefix(cleanKey, "data\\") // Handle Windows pathing edge-case
 
-				// Re-render the files and broadcast the update to connected browsers
+				// Re-render the files and broadcast the update
 				loadAllSections()
 				broadcast <- cleanKey
+				
+			} else if isK8sEdit {
+				// Re-render the files
+				loadAllSections()
+				
+				// Since Kubernetes swaps the entire ConfigMap directory atomically, 
+				// we don't know exactly which file the user edited. 
+				// To ensure the frontend reloads, we broadcast an update for EVERY cached key.
+				// The frontend's smart reload logic will ignore keys it isn't currently viewing.
+				cacheMutex.RLock()
+				for key := range contentCache {
+					broadcast <- key
+				}
+				cacheMutex.RUnlock()
 			}
+
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return
