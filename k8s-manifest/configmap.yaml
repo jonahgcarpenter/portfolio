@@ -1,0 +1,230 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: portfolio-content
+data:
+  about-me.md: |
+    # About Me
+
+    Howdy, I'm Jonah Carpenter. I'm a Software Engineer who actually cares about the hardware my code runs on. I handle everything from writing the backend logic to building the deployment pipelines so it doesn't crash in production.
+
+    Instead of using corporate buzzwords about "intersecting spaces," I just build stuff. At home, that means running a bare-metal Kubernetes cluster, Proxmox, and Unifi networking gear meant for a small business.
+
+    Whether I'm writing completely local uncensored AI agents from scratch, building custom video pipelines, or racking more servers, I'm driven by a need to understand exactly how things work under the hood. My ultimate goal is simple: build infrastructure that is as arousing as the code it runs.
+
+    ## Self-Hosting
+
+    In 2020, I started messing around with Home Assistant. I just wanted to automate a robot vacuum based on our Life360 locations, but it turned out to be the gateway drug to a full-blown obsession. What started as a single localized automation to solve a minor inconvenience has snowballed into the small AWS region in my house. 
+
+    As my technical skills grew, so did my distrust of big tech. I became increasingly wary of handing my personal data over to the cloud. Now, I self-host practically everything. I even maintain a secondary homelab for my parents because they became dependent after I spoon-fed them Home Assistant for all those years. For me, self-hosting isn't just a hobby anymore; it's a completely local, privacy-first lifestyle.
+
+    ## Software Engineering
+
+    While I will always have a soft spot for DevOps and infrastructure, my core discipline is Software Engineering. Racking servers and building out a bare-metal cluster is fun, but I like extending my skills for others to use, and my friends and family couldn't tell you the difference between HTTP and HTTPS.
+
+    I don't just spin up pre-built containers, that would be no fun. When an existing solution doesn't cut it, I build it myself from the ground up. As a strict requirement, everything I write for myself must be fully local and free. I mean, why else would I have set all this infrastructure up just to continue handing out my data or paying fees?
+
+    Lastly, I take immense pride in my personal projects, no matter how stupid the premise might be. I will happily spend an embarrassing amount of time agonizing over the perfect directory structure, religiously enforcing formatters, and ensuring the codebase is actually diagnosable for when "future me" inevitably has to update it. And because everything I build is ultimately destined to run on my own bare-metal Kubernetes cluster, security is never an afterthought. If an app or service is going to live on my infrastructure, it's going to be locked down.
+
+    ## Contact
+
+    I recently deleted my LinkedIn and replaced my account with this portfolio. I honestly just got tired of all the AI slop, attention-seeking posts, and scams. By far the best way to reach me is via my email in the footer of this page.
+
+  resume.md: |
+    # Resume
+
+    ## Education
+
+    **University of Mississippi** | May 2025
+    Bachelor’s in Computer Science
+
+    **Itawamba Community College** | May 2022
+    Associate’s in Computer Science
+
+    ## Experience
+
+    **Universal Asset Management** | Shannon, MS
+    Software Engineer | April 2026 - Present
+    Jr Web/ERP Developer | April 2025 – April 2026
+
+    - **Technical Direction & Support:** Direct all organizational technical strategy and architecture, serving as the primary escalation point for all software, hardware, network, and as needed IT support. 
+    - **ERP Architecture (Go/React):** Spearheaded the ground-up rewrite of a legacy ERP into a custom Go/React platform, engineering native 3rd-party API integrations to guarantee backward compatibility.
+    - **High-Performance Audio Pipeline:** Built CALC-Translation, a sub-1000ms real-time audio pipeline integrating Zoom RTMS and Soniox for live meeting transcription and translation.
+    - **Infrastructure Management:** Administer metal-up infrastructure, deploying bare-metal ZFS storage (flashed IT-mode H810 HBAs) and automated Proxmox Kubernetes staging environments via Terraform/Ansible.
+
+    ## Technical Skills
+
+    **Languages:** Go (Golang), Python, Bash, TypeScript, JavaScript, PHP, SQL
+    **Frameworks & Tools:** React, Bun, FastAPI, Gin, Electron, PostgreSQL, LangChain, Laravel, Angular, Express, Ollama, MCP
+    **Infrastructure & CI/CD:** Kubernetes (K8s), Docker, Terraform, Ansible, FluxCD (GitOps), GitHub Actions, Proxmox, Talos Linux, ZFS
+    **Networking & Security:** Cilium, eBPF, WireGuard, UniFi, Traefik, Pi-hole, Cloudflare Tunnels, WebRTC, WebSockets
+    **Observability:** Prometheus, Grafana, Loki, Hubble
+
+    ## Projects
+
+    I am going to keep these overviews brief, as they only serve as high level explanations for the uninitiated. The deeper more tecnical explinations can be found on each projects respective page. This list is comprised of my currently in production applications, as always there is much more dead weight on my github where any and everything I build is in a public repo
+
+    **CALC-Translation** | Python, React
+
+    A real-time transcription and translation platform designed to provide low-latency (<1000ms), accurate captions or translations for meetings in multiple languages. It features dual operation modes—integrating directly with Zoom or running standalone for local audio—alongside helpful tools like AI-generated meeting summaries and Microsoft 365 calendar synchronization. Additionally, it utilizes a "Smart Backfill" feature to instantly translate past session history, ensuring that users who join late or switch languages do not lose any context
+
+    **Homelab** | Kubernetes, Proxmox
+
+    Personal server and home network setup. The infrastructure relies on robust UniFi networking hardware alongside dedicated compute nodes, such as a Proxmox server, a Talos mini-PC cluster, and a Home Assistant Yellow. It is designed to host a wide ecosystem of self-hosted applications and infrastructure tools, supporting technologies like Kubernetes, TrueNAS, Grafana, and various AI and home automation services
+
+    **Oswald-AI** | Golang
+
+    An uncensored, witty AI agent integrated directly into Discord, iMessage, and WebSocket gateways to serve as a highly capable digital manservant. Built in pure Go, it runs a single iterative agent loop backed by self-hosted Ollama that dynamically executes tool calls to gather real-time SearXNG web intelligence and manage user profiles. Fully local and zero cloud dependencies, it features a three-tier stateful memory architecture and multimodal image processing to deliver highly contextual, brutally honest answers with a distinct touch of unhinged humor.
+
+    **April's Lil Pugs** | TypeScript, Golang
+
+    Built a full-stack dog breeding operations platform with React, Go, and PostgreSQL, featuring a custom self-hosted RTMP/RTMPS live streaming server that delivers a zero-cloud live play pen camera alongside puppy galleries, customer interactions, and waitlist workflows.
+  calc-translation.md: |
+    # CALC-Translation [repo](https://github.com/jcarpenter-uam/calc-translation)
+
+    ## Overview
+
+    Most meeting transcription bots are awful. They join your calls as "ghost" participants, introduce latency, and completely fail if you switch languages halfway through or join a meeting ten minutes late
+
+    CALC Translation is my answer to that. It is a comprehensive, real-time transcription and translation platform engineered to integrate directly with the 16-bit PCM data streams, providing low-latency, accurate captions across multiple languages without the friction of traditional bot participants
+
+    Now this project was given to me as a challenge just to see what was possible before buying a finished alternative, and everyone has turned out pleased with the result. As a solo I have been forced to lean more into AI than I would like causing the codebase to become something I am not proud of. I grow more and more discusted by this project by the day, but it's kind of my job
+
+    ## Architecture & Stack
+
+    - **Backend:** Written in Python using **FastAPI/Uvicorn** for high performance asynchronous functionality. Built with high simultanious usage in mind the focus was optimization for I/O, routing incoming audio streams, and broadcasting text back to clients using Websockets
+
+    - **Database & State:** For persistent storage I am using **PostgreSQL** with asyncpg and SQLAlchemy. The real winner here is **Redis**. Live transcript history is cached in Redis, session control events coordinate across multiple backend instances via Redis Pub/Sub, and receiver ownership is handled using Redis leases to ensure instant failover if a node dies
+
+    - **Zoom RTMS:** To avoid the "ghost bot" problem, I wrote an isolated Node.js microservice utilizing WebSockets and Zoom's RTMS (Real-time Media Stream) SDK. This worker extracts the raw audio directly from the Zoom server backend and pipes it to my processing engine
+
+    - **Evil Frontend:** Yes, I said I hate React, which is why I built two frontend clients... But for a highly dynamic, multi-lingual interface receiving hundreds of Server-Sent Events/WebSocket messages a minute, pure HTML/JS becomes a spaghetti mess. The web client is **Vite and TailwindCSS**, localized using **i18next**. There is also a second desktop client using **Electron** which comes with a few extra featureas due to OS level APIs, but most of the code is copy paste
+
+    ## Highlights
+
+    Handling real-time translation means maintaining persistent connections. By implementing a custom ConnectionManager and TranscriptCache backed by Redis, a user can connect to Node A, the audio can be processed by Node B, and the state remains perfectly synced without dropping a frame. In addition the TranscriptCache keeps the frontend snappy since the meeting history is stored in memory per language
+
+    If a user joins a meeting 20 minutes late, or decides halfway through that they want the captions in Spanish instead of English, they shouldn't lose the context. I integrated Alibaba's Qwen LLM to perform "Smart Backfills". The BackfillService instantly pulls the session history from the Redis cache, translates the entire backlog on the fly, and pushes it to the client. TranscriptCache helps us out here too. To reduce external API cost only the first user to select a new language triggers backfill, any subsequent attendees in the same language will simply hit the cache
+
+    The system isn't locked into Zoom. It features a standalone mode where hosts can stream audio straight from their local microphone via the browser, making it perfect for live, in-person presentations
+
+    The backend isn't just a router; it's heavily integrated. It securely talks to Microsoft 365 (msal) via an OAuth flow to fetch calendar events and generate one-click join links. At the end of the meeting, a SummaryService kicks off, leveraging Ollama integrations to generate AI meeting summaries and email them to attendees
+  homelab.md: |
+    # Homelab [repo](https://github.com/jonahgcarpenter/oswald-homelab)
+
+    ## Overview
+
+    If you want to understand how a distributed system behaves in production, you don't rent a managed service, you build the data center in your house
+
+    Project Oswald is my comprehensive, self-hosted bare-metal environment. It serves as my testing ground for CI/CD pipelines, high-availability storage, hardware passthrough, and local AI model hosting. It is built entirely on Infrastructure as Code (IaC) and GitOps principles because executing manual kubectl apply commands in 2026 is absolutely unacceptable
+
+    Having my own infra allows me to explore and learn at my own will, and helps me regain my data privacy. It also gives me the opportunity to continue building more stupid software projects, because I pay nothing to host it
+
+    ## The Metal
+
+    While this is not a typical production environment, I treat it like one. I'm spending too much time and money on this for shit to be broken
+
+    - **Networking:** Routing is handled by a **UDM-SE** linked to a **24 PoE Switch**. This gives me ample 2.5GbE and 10G SFP+ capacity to handle high-throughput storage and cluster traffic without bottlenecks. To pair I have dual **U7** APs because I really hate video buffering
+    - **Kubernetes:** Powered by a fleet of 3 Mini PCs. These are my dedicated, highly-available Kubernetes nodes. The goal is deploy everything within Kubernetes, I like the developer experience more
+    - **PVE-0:** The hand me downs from old builds, and a gifted GPU from a friend. This server is dedicated to higher compute needs, virtualized NAS, GPU access, and anything that cannot be dockerized for Kubernetes
+    - **Home Assistant:** A standalone HAS Yellow to handle all my automation needs. I can't live without this, so It has to be fully standalone. Every other server could die and my home assistant would still work flawlessly
+
+    ## Networking
+
+    VLANS for security, IDS/IPS protection, and Firewall rules to block entire countries. This allows me to sleep at night while having public exposed services, and keeps the thermostat from brute forcing my proxmox login.
+
+    VPN is a must, most of my servers are not public so I need a way to be at home when I am not at home. Plus it keeps you more secure while out and about, and means the office wifi restrictions don't apply to you. **WireGuard** is great for this, I don't want anyone convincing me of Tailscale either, they make you pay real money to use an application you host at home. It's a wireguard wrapper with bloat and should be publicly shamed
+
+    My family also loves this. Everyone using the same VPN server means Netflix only sees one public IP, no more extra $15 a month for "out of house" accounts
+
+    ## Kubernetes Ecosystem
+
+    The entire lifecycle of this cluster is automated. If the house burns down, I only need to replace the hardware and hopefully a hard drive with a backup; the state is securely stored and recoverable.
+
+    **FluxCD** handles my CD pipeline, this means I live by the principles of GitOps where the codebase on github is the absolute source of truth. This makes things super easy between my desktop and laptop or even if I want to edit a deployment on my phone. Yes, I hear ArgoCD is more feature rich but I dont need the extra bloat. Plus web-uis are for the weak, real developers live in a terminal
+
+    Secrets become an issue here, I can't have the whole world knowing my API keys. To handle this I integrated **Sealed Secrets**, this means the secrets are encrypted and can be stored in a public repo. If you are asking yourself "why not just make the repo private?" then you are a problem and I hope microsoft sells your base64 encoded API keys to the highest bidder
+
+    Distributed storage is **Longhorn's** problem, It handles backups and snapshots to ensure my persistent data is safe
+
+    **Cilium** was a recent edition, which allows me to safely host this public website on a local cluster using new eBPF based CNI policies. LAN access is securely routed through **Traefik** ingress (yes I am aware of the new Gateway API), with **Cert-Manager** dynamically handling wildcard TLS certificates. And any public applications utilize **Cloudflare** tunnels with 0 trust rules since they completely bypass the DMZ to ensure no bad actors can cause me emotional harm. Additionally the **Hubble** web ui is helpful for diagnosing network blocks or how your request is being routed
+
+    When I first started with Kubernetes the biggest hurtle was not being able to diagnose anything. This is where my observability suite comes in. Metrics are scraped and visualized via the **Prometheus & Grafana** stack, while log aggregation is routed through **Loki** (which actively feeds this portfolio). This has become the central hub for all my local metrics, anything I can visualize in Grafana I will. Then when shit hits the fan, **Alert-Manager** sends a webhook to Home Assistant to let me know
+
+    Now I could go on forever here, but the rest of the deployments are bone simple and can be explored on my github
+
+    ## Proxmox
+
+    Now for anything that requires specific hardware, it lives here. 
+
+    **Ollama** is my local AI hub, and the backbone of the Oswald-AI project. This makes it easy to explore new models with a single command and has direct access to my GPU because I am impatent and love giving the power company all my money
+
+    Every home needs a security system right? Introducting **Frigate** the fully local NVR. 24/7 recording is a must for all cameras, and recently introcuded facial recognition which is great because Compreface and DoubleTake seem to be dead projects. Using this facial recognition I can automate my front door to unlock for me because pulling out my phone and tapping a widget is too much work
+
+    For a little bit of fun and the reason my friend group still talks to me, **Pterodactyl** is great for game servers. 2 week Minecraft phase, I've got the server covered
+
+    Finally everyones most boring project, the NAS. Nothing special here TrueNAS with some SMB shares. Dedicated backup shares, Frigate recordings, and somewhere with redundant storage to store all my tax documents
+  oswald-ai.md: |
+    # Oswald-AI [repo](https://github.com/jonahgcarpenter/oswald-ai)
+
+    ## Overview
+
+    My homelab needed a brain and a sense of humor. But I don't want some generic wrapper or to give Sam Altman all my money. The goal was to create a fully local, uncensored, unforgiving AI. As it turns out keeping the model fully uncensored without training your own model is the most complex part.
+
+    I built a complete V1 using **Python, LangChain, and MCP**, which featured fully operational RAG (Retrieval-Augmented Generation) and tool use. It worked well, but "working" isn't the same as "optimal." 
+
+    After OpenClaw released, I realized my agentic architecture needed a massive overhaul. They had built the censored version of what I was attempting to create months before—in TypeScript, of all languages. I decided to tear down the functional Python build, and rewite everything in Go because I like the langauge more
+
+    ## Architecture
+
+    - **Backend:** I have recently been loving Golang. The compiler yells at you before you push garbage to prod, and it compiles to a single binary, meaning the Docker containers are tiny compared to Python. I know Bun exists for JavaScript/TypeScript so I could really just copy OpenClaw, but that's no fun. RAM is also way too expensive to be running JavaScript on the backend, what's wrong with you...
+    - **The Pipeline:** The old two-stage router model is dead. Oswald now operates on a single iterative agent loop backed by self-hosted Ollama. It dynamically evaluates prompts, executes tool calls—like pulling real-time web intelligence via SearXNG or managing memory—and synthesizes everything into a brutally honest final response in one smooth pass.
+    - **Multimodal:** He can see now. I added image processing support so he can roast whatever screenshots or photos you send him.
+    - **Interfaces:** Since the GPU was donated by a friend, I felt obligated to give them access to Oswald. It started with Discord since it's widely used, but the gateway architecture has expanded. You can now reach him via Discord, native iMessage, or through a WebSocket gateway (Frontend TBD????).
+
+    ## The Memory System
+
+    Oswald is no longer a goldfish. Ditching the stateless design was the biggest leap forward. To handle multi-turn, multi-user workloads without bleeding my context into my friends' chats, Oswald uses a custom three-tier memory architecture:
+    1. **Session Memory:** Standard short-term context for the active conversation.
+    2. **Persistent User Facts:** Long-term memory where Oswald actively extracts and saves facts about specific users to his database. He remembers who you are and tailors the abuse accordingly.
+    3. **The Soul File:** A core personality file that dictates his system prompt and baseline behavior, which Oswald can edit using a tool call.
+
+    ## My Plan
+
+    Up until now, Oswald has mostly been a way to dive deep into local LLMs and roast my friends in Discord. The actual endgame, though, is a fully local, unapologetically sarcastic digital butler. The vision is a zero-dependency system that can orchestrate my homelab, remember exactly who I am, and send a birthday text to my mom to save my skin, all while maintaining a brutally honest sense of humor.
+
+  aprils-lil-pugs.md: |
+    # April's Lil Pugs [repo](https://github.com/jonahgcarpenter/aprilslilpugs) | [live](https://aprilslilpugs.com)
+
+    ## Overview
+
+    April's Lil Pugs is a full-stack web platform built for a dog breeding business to manage litters, puppy listings, galleries, waitlist inquiries, and site administration. Rather than using a generic site builder or breeder-specific SaaS product, I built a custom React and Go application tailored to the actual operational needs of the business.
+
+    Although much of the platform is standard CRUD functionality, the project became more interesting in two areas that matter most for this type of site: handling large volumes of uploaded images efficiently and delivering a fully self-hosted live puppy camera feed with no cloud streaming dependencies.
+
+    ## Architecture
+
+    - **Frontend:** React, TypeScript, Vite, Tailwind CSS
+    - **Backend:** Go, Gin, PostgreSQL
+    - **Storage:** Local file storage for uploads and generated media
+    - **Streaming Pipeline:** Custom Go RTMP/RTMPS ingest server, FFmpeg, Cheap Eufy RTSP camera
+
+    ## Image Handling
+
+    Breeder sites are inherently media-heavy, and raw phone photos are far too large to serve directly without hurting performance and storage costs. The backend processes uploads before storing them, reducing image size and stripping unnecessary metadata so galleries stay fast while preserving enough quality for detailed puppy photos.
+
+    This keeps the site lightweight without introducing third-party image hosting or CDN dependencies, which was an intentional design choice for simplicity and control.
+
+    ## Self-Hosted Live Streaming
+
+    The standout feature of the platform is a fully self-hosted puppy camera feed. Instead of embedding YouTube or relying on an external streaming service, I built live streaming directly into the application stack using Go.
+
+    The server accepts RTMP and RTMPS ingest, manages stream state, and publishes HLS playback for the frontend. That means the live camera operates entirely on infrastructure I control, with no cloud video vendor, no platform moderation issues, and no dependency on third-party uptime or policy changes.
+
+    For the business, the live stream became more than a novelty feature. It gives prospective buyers a real-time view into the play pen, increases trust, and creates a stronger connection to the puppies long before pickup day.
+
+    ## Why It Matters
+
+    At a glance, this is a niche business website. In practice, it is a production full-stack system that combines administrative workflows, media processing, and custom live video infrastructure in a single application.
+
+    The CRUD side keeps the business running day to day. The custom streaming stack is what makes the project technically distinctive.

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: portfolio-service
+spec:
+  selector:
+    app: portfolio
+  ports:
+    - protocol: TCP
+      port: 80 # The port external cluster services (like the tunnel) talk to
+      targetPort: 8080 # The port your Go app is listening on
+  type: ClusterIP # Internal only; kept secure behind the Cloudflare tunnel
